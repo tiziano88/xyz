@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate termion;
 
 use std::thread;
 use std::time;
@@ -12,6 +13,33 @@ struct Grid {
     grid: [[u32; 32]; 32],
 }
 
+trait Modifier {
+    fn modify(&mut self, &mut Grid);
+}
+
+struct Blob {
+    x: i32,
+    y: i32,
+}
+
+impl Modifier for Blob {
+    fn modify(&mut self, grid: &mut Grid) {
+        for x in 0..grid.grid.len() {
+            for y in 0..grid.grid[x].len() {
+                let dx = self.x - x as i32;
+                let dy = self.y - y as i32;
+                let distance = dx * dx + dy * dy;
+                if distance > 0 {
+                    grid.grid[x][y] += 10 / distance as u32;
+                    if grid.grid[x][y] > max {
+                        grid.grid[x][y] = 0;
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl Grid {
     fn new() -> Grid {
         let mut g = Grid::default();
@@ -21,21 +49,12 @@ impl Grid {
         for i in 0..32 {
             self.grid[31][i] += 1;
         }
-        let sources = vec![(2, 4), (10, 12), (9, 15)];
-        for x in 0..32 {
-            for y in 0..32 {
-                for &(sx, sy) in sources.iter() {
-                    let dx = sx - x as i32;
-                    let dy = sy - y as i32;
-                    let distance = dx * dx + dy * dy;
-                    if distance > 0 {
-                        self.grid[x][y] += 10 / distance as u32;
-                        if self.grid[x][y] > max {
-                            self.grid[x][y] = 0;
-                        }
-                    }
-                }
-            }
+        let mut modifiers = vec![
+            Blob{x:1, y:2},
+            Blob{x:15, y:10},
+        ];
+        for m in modifiers.iter_mut() {
+            m.modify(self);
         }
         for x in 0..32 {
             for y in 0..32 {
@@ -57,7 +76,7 @@ impl Grid {
         let mut s = "".to_string();
         for row in self.grid.iter() {
             for cell in row.iter() {
-                let x = format!("{}", out(*cell as u32));
+                let x = out(*cell as u32);
                 s.push_str(&x);
             }
             s.push('\n');
@@ -66,11 +85,19 @@ impl Grid {
     }
 }
 
-fn out(i: u32) -> char {
+fn out(i: u32) -> String {
     let norm = if i > max { max } else { i };
     let alpha: Vec<char> = vec![' ', '.', ',', '\'', ':', ';', '-', '+', 'o', 'O', '#', '$', '@'];
-    let index = (norm * (alpha.len() as u32 - 1) / max) as usize;
-    alpha[index]
+
+    let blue = &termion::color::Blue;
+    let yellow = &termion::color::Yellow;
+    let red = &termion::color::Red;
+    let colors: Vec<&termion::color::Color> = vec![blue, yellow, red];
+    let alpha_index = (norm * (alpha.len() as u32 - 1) / max) as usize;
+    let color_index = (norm * (colors.len() as u32 - 1) / max) as usize; // XXX
+    format!("{}{}",
+            termion::color::Fg(colors[color_index]),
+            alpha[alpha_index])
 }
 
 fn main() {
@@ -81,11 +108,16 @@ fn main() {
     let interval = time::Duration::from_millis(100);
     let mut rng = thread_rng();
     let mut grid = Grid::new();
+    println!("{}", termion::clear::All);
     loop {
         thread::sleep(interval);
         let mut s = "".to_string();
         grid.step();
+        println!("{}", termion::cursor::Hide);
+        println!("{}", termion::cursor::Goto(1, 1));
+        // println!("{}", termion::cursor::Goto(30, 30));
         println!("{}", grid.show());
         // println!("\n\n\n\n\n\n{}", s);
+        println!("{}", termion::cursor::Show);
     }
 }
