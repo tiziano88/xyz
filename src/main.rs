@@ -90,9 +90,10 @@ fn out(i: u32) -> String {
     let alpha: Vec<char> = vec![' ', '.', ',', '\'', ':', ';', '-', '+', 'o', 'O', '#', '$', '@'];
 
     let blue = &termion::color::Blue;
+    let green = &termion::color::Green;
     let yellow = &termion::color::Yellow;
     let red = &termion::color::Red;
-    let colors: Vec<&termion::color::Color> = vec![blue, yellow, red];
+    let colors: Vec<&termion::color::Color> = vec![blue, green, yellow, red];
     let alpha_index = (norm * (alpha.len() as u32 - 1) / max) as usize;
     let color_index = (norm * (colors.len() as u32 - 1) / max) as usize; // XXX
     format!("{}{}",
